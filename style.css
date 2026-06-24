@@ -334,7 +334,7 @@ body.light-theme .nav.scrolled {
 
 .hero-content {
   position: relative;
-  padding: 170px 0 100px;
+  padding: 170px 0 150px;
   text-align: center;
 }
 
@@ -365,11 +365,16 @@ body.light-theme .nav.scrolled {
 }
 
 .hero-buttons {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
   gap: 14px;
-  flex-wrap: wrap;
+  width: min(100%, 430px);
+  margin-inline: auto;
   margin-top: 34px;
+}
+
+.hero-buttons .btn {
+  width: 100%;
 }
 
 .hero-badges {
@@ -391,10 +396,10 @@ body.light-theme .nav.scrolled {
 }
 
 .hero-scroll {
-  position: absolute;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%);
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -402,6 +407,7 @@ body.light-theme .nav.scrolled {
   border: none;
   background: transparent;
   color: inherit;
+  margin: 34px auto 0;
 }
 
 .hero-scroll span {
@@ -1267,12 +1273,14 @@ body.light-theme .nav.scrolled {
   }
 
   .hero-content {
-    padding: 160px 0 90px;
+    padding: 160px 0 120px;
   }
 
   .hero-buttons {
+    display: flex;
     flex-direction: column;
     align-items: center;
+    width: 100%;
   }
 
   .hero-buttons .btn {
