@@ -1,491 +1,164 @@
-// DOM Elements
 const nav = document.getElementById("nav");
-const cuisineDropdown = document.getElementById("cuisine-filter");
-const menuSearch = document.getElementById("menu-search");
 const navToggle = document.getElementById("navToggle");
 const navMenu = document.getElementById("navMenu");
 const navLinks = document.querySelectorAll(".nav-link");
-// Menu tabs/panels removed — menu uses filter buttons and data-category items
 const heroBg = document.getElementById("heroBg");
 const reservationBg = document.getElementById("reservationBg");
+const themeToggle = document.getElementById("themeToggle");
+const backToTopBtn = document.getElementById("backToTop");
+const menuSearch = document.getElementById("menu-search");
+const cuisineDropdown = document.getElementById("cuisine-filter");
+const filterBtns = document.querySelectorAll(".filter-btn");
+const dietBtns = document.querySelectorAll(".diet-btn");
+const menuItems = document.querySelectorAll("#menuItems .menu-item");
+const menuResultCount = document.getElementById("menuResultCount");
+const heroScroll = document.querySelector(".hero-scroll");
 const reservationForm = document.getElementById("reservationForm");
 const dateInput = document.getElementById("reservation-date");
 const timeSelect = document.getElementById("time");
-const themeToggle = document.getElementById("themeToggle");
-const filterBtns = document.querySelectorAll(".filter-btn");
-const menuContent = document.querySelector(".menu-content");
-if (dateInput) {
-  const tomorrow = new Date(Date.now() + 86400000);
-  const maxDate  = new Date(Date.now() + 90 * 86400000);
+const reviewForm = document.getElementById("review-form");
+const reviewMsg = document.getElementById("review-msg");
+const starBtns = document.querySelectorAll("#star-input .star-btn");
+const reviewRatingInput = document.getElementById("review-rating");
 
-  dateInput.setAttribute("min", tomorrow.toISOString().split("T")[0]);
-  dateInput.setAttribute("max", maxDate.toISOString().split("T")[0]);
-// ── Device detection (used by FIX #9 and FIX #14) ───
-const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-//DOM ELEMENT
-const nav            = document.getElementById('nav');
-const navToggle      = document.getElementById('navToggle');
-const navMenu        = document.getElementById('navMenu');
-const navLinks       = document.querySelectorAll('.nav-link');
-const heroBg         = document.getElementById('heroBg');
-const reservationBg  = document.getElementById('reservationBg');
-const reservationForm= document.getElementById('reservationForm');
-const dateInput      = document.getElementById('date');
-const timeSelect     = document.getElementById('time');
-const themeToggle    = document.getElementById('themeToggle');
+const STORAGE_KEY = "lighthouse_reviews";
+const pinnedReview = {
+  name: "Rasshi Srivastav",
+  rating: 5,
+  text:
+    "Absolutely loved the food and ambience! Every dish was crafted with such care and the atmosphere was warm and elegant.",
+  date: "14 May 2026",
+};
 
-// ── FIX #9 — show correct scroll hint based on input type ────────
-const scrollHintMouse = document.querySelector('.scroll-hint-mouse');
-const scrollHintTouch = document.querySelector('.scroll-hint-touch');
+let selectedRating = 0;
+let activeDiet = "all";
 
-if (scrollHintMouse && scrollHintTouch) {
-  scrollHintMouse.style.display = isTouchDevice ? 'none' : '';
-  scrollHintTouch.style.display = isTouchDevice ? '' : 'none';
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-// ── FIX #13 — Date validation: min = tomorrow, max = 90 days out ─────
-if (dateInput) {
-  const tomorrow = new Date(Date.now() + 86400000);
-  const maxDate  = new Date(Date.now() + 90 * 86400000);
-
-  dateInput.setAttribute('min', tomorrow.toISOString().split('T')[0]);
-  dateInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
-
-  dateInput.addEventListener('change', updateAvailableTimes);
+function isTouchDevice() {
+  return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 }
 
-// ── FIX #11 — Disable past time slots when today is selected.
-// Original had no handler for this — users could pick 7AM at 10PM.
+function setTheme(theme) {
+  const isLight = theme === "light";
+  document.body.classList.toggle("light-theme", isLight);
+  localStorage.setItem("theme", theme);
+  if (themeToggle) {
+    themeToggle.textContent = isLight ? "☀️" : "🌙";
+    themeToggle.setAttribute("aria-pressed", String(isLight));
+  }
+}
+
 function updateAvailableTimes() {
   if (!dateInput || !timeSelect) return;
 
   const selectedDate = dateInput.value;
-  const todayStr     = new Date().toISOString().split('T')[0];
-  const now          = new Date();
-  const currentHours = now.getHours();
-  const currentMins  = now.getMinutes();
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  const currentHours = today.getHours();
+  const currentMinutes = today.getMinutes();
 
-  timeSelect.querySelectorAll('option').forEach((option) => {
+  timeSelect.querySelectorAll("option").forEach((option) => {
     if (!option.value) return;
 
-    const [optHours, optMins] = option.value.split(':').map(Number);
+    const [hours, minutes] = option.value.split(":").map(Number);
+    const isPastToday =
+      selectedDate === todayStr &&
+      (hours < currentHours || (hours === currentHours && minutes <= currentMinutes + 30));
 
-    if (selectedDate === todayStr) {
-      // Disable times already passed (30-min buffer for travel/prep)
-      const isPast =
-        optHours < currentHours ||
-        (optHours === currentHours && optMins <= currentMins + 30);
+    option.disabled = isPastToday;
 
-      option.disabled = isPast;
-      if (isPast && option.selected) {
-        timeSelect.value = '';
-      }
-    } else {
-      option.disabled = false;
+    if (isPastToday && option.selected) {
+      timeSelect.value = "";
     }
   });
 }
 
+function closeMobileMenu() {
+  if (!navMenu || !navToggle) return;
+  navMenu.classList.remove("active");
+  navToggle.classList.remove("active");
+  navToggle.setAttribute("aria-expanded", "false");
+  document.body.style.overflow = "";
+}
 
+function toggleMobileMenu() {
+  if (!navMenu || !navToggle) return;
+  const isOpen = navMenu.classList.toggle("active");
+  navToggle.classList.toggle("active", isOpen);
+  navToggle.setAttribute("aria-expanded", String(isOpen));
+  document.body.style.overflow = isOpen ? "hidden" : "";
+}
 
-// ── Navigation scroll effect ──
+function updateActiveNavLink() {
+  const sections = document.querySelectorAll("section[id]");
+  const scrollPosition = window.scrollY + 160;
+
+  sections.forEach((section) => {
+    const top = section.offsetTop;
+    const bottom = top + section.offsetHeight;
+
+    if (scrollPosition >= top && scrollPosition < bottom) {
+      navLinks.forEach((link) => {
+        link.classList.toggle("active", link.dataset.section === section.id);
+      });
+    }
+  });
+}
+
 function handleScroll() {
   const currentScroll = window.scrollY;
+  nav?.classList.toggle("scrolled", currentScroll > 40);
 
-  // Sticky nav background
-  nav.classList.toggle('scrolled', currentScroll > 50);
-
-  // FIX #14 — Parallax completely skipped on touch/iOS
-  // background-attachment:fixed doesn't work on iOS Safari and the JS
-  // translateY parallax causes severe jank on touch devices.
-  if (!isTouchDevice) {
+  if (!isTouchDevice()) {
     if (heroBg) {
-      heroBg.style.transform = `translateY(${currentScroll * 0.5}px)`;
+      heroBg.style.transform = `translateY(${currentScroll * 0.18}px)`;
     }
-    if (reservationBg && currentScroll > window.innerHeight) {
-      const sectionTop = document.getElementById('reservation').offsetTop;
-      const offset = (currentScroll - sectionTop) * 0.3;
-      reservationBg.style.transform = `translateY(${offset}px)`;
+
+    if (reservationBg) {
+      const reservationSection = document.getElementById("reservation");
+      if (reservationSection) {
+        const sectionTop = reservationSection.offsetTop;
+        const offset = Math.max(0, (currentScroll - sectionTop) * 0.15);
+        reservationBg.style.transform = `translateY(${offset}px)`;
+      }
     }
+  }
+
+  if (backToTopBtn) {
+    backToTopBtn.classList.toggle("visible", currentScroll > 500);
   }
 
   updateActiveNavLink();
 }
 
-// ── Active nav link on scroll ───
-function updateActiveNavLink() {
-  const sections       = document.querySelectorAll('section[id]');
-  const scrollPosition = window.scrollY + 150;
-
-  sections.forEach((section) => {
-    const sectionTop    = section.offsetTop;
-    const sectionHeight = section.offsetHeight;
-    const sectionId     = section.getAttribute('id');
-
-    if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-      navLinks.forEach((link) => {
-        link.classList.remove('active');
-        if (link.getAttribute('data-section') === sectionId) {
-          link.classList.add('active');
-        }
-      });
-    }
-  });
-}
-
-// ── Mobile menu ───
-function toggleMobileMenu() {
-  navToggle.classList.toggle('active');
-  navMenu.classList.toggle('active');
-  document.body.style.overflow = navMenu.classList.contains('active') ? 'hidden' : '';
-}
-
-function closeMobileMenu() {
-  navToggle.classList.remove('active');
-  navMenu.classList.remove('active');
-  document.body.style.overflow = '';
-}
-
-// Menu tabs functionality
-function switchMenuTab(e) {
-  const targetTab = e.target.dataset.tab;
-
-  // Update tab buttons
-  menuTabs.forEach((tab) => {
-    tab.classList.remove("active");
-  });
-  e.target.classList.add("active");
-
-  // Update panels
-  menuPanels.forEach((panel) => {
-    panel.classList.remove("active");
-    if (panel.id === targetTab) {
-      panel.classList.add("active");
-    }
-  });
-}
-
-//
-// Theme Toggle
-const savedTheme = localStorage.getItem("theme");
-
-if (savedTheme === "light") {
-  document.body.classList.add("light-theme");
-  themeToggle.textContent = "☀️";
-} else {
-  themeToggle.textContent = "🌙";
-}
-
-themeToggle.addEventListener("click", () => {
-  document.body.classList.toggle("light-theme");
-
-  const isLight = document.body.classList.contains("light-theme");
-
-  if (isLight) {
-    localStorage.setItem("theme", "light");
-    themeToggle.textContent = "☀️";
-  } else {
-    localStorage.setItem("theme", "dark");
-    themeToggle.textContent = "🌙";
-  }
-});
-
-// ── Menu Search and Filter ─────────────────────────
-
-
-
-function filterMenuItems(timeFilter, cuisineFilter, searchText) {
-  const menuItems = document.querySelectorAll(".menu-item");
-  let visibleCount = 0;
-
-  menuItems.forEach((item) => {
-    // Check if the item has an H3 before trying to read it
-    const titleElement = item.querySelector("h3");
-    if (!titleElement) return; // Skip this loop iteration if structure is invalid
-
-    const itemName = titleElement.textContent.toLowerCase();
-    const timeCategory = item.dataset.category || "all"; 
-    const cuisineCategory = item.dataset.cuisine || "all";
-
-    const matchesSearch = itemName.includes(searchText.toLowerCase());
-    const matchesTime = timeFilter === "all" || timeCategory === timeFilter;
-    const matchesCuisine = cuisineFilter === "all" || cuisineCategory === cuisineFilter;
-
-    if (matchesSearch && matchesTime && matchesCuisine) {
-      item.classList.remove("hidden-item");
-      visibleCount++;
-    } else {
-      item.classList.add('hidden-item');
-    }
-  });
-
-  // Handle "No Results" display
-  let noResults = document.querySelector(".no-results");
-  if (visibleCount === 0) {
-    if (!noResults) {
-      noResults = document.createElement("p");
-      noResults.className = "no-results";
-      noResults.textContent = "No menu items found.";
-      document.querySelector(".menu-content").appendChild(noResults);
-    }
-  } else if (noResults) {
-    noResults.remove();
-  }
-}
-function triggerFilter() {
-  const activeBtn = document.querySelector(".filter-btn.active");
-  const timeFilter = activeBtn ? activeBtn.dataset.filter : "all";
-  const cuisineFilter = cuisineDropdown ? cuisineDropdown.value : "all";
-  const searchText = menuSearch ? menuSearch.value : "";
-  
-  filterMenuItems(timeFilter, cuisineFilter, searchText);
-}
-if (cuisineDropdown) {
-  cuisineDropdown.addEventListener("change", triggerFilter);
-}
-
-if (menuSearch) {
-  menuSearch.addEventListener("input", triggerFilter);
-}
-// Filter buttons
-filterBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    filterBtns.forEach((b) => b.classList.remove("active"));
-
-    btn.classList.add("active");
-    triggerFilter();
-
-    
-  });
-});
-
-if (menuSearch) {
-  menuSearch.addEventListener('input', () => {
-    const activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
-    filterMenuItems(activeFilter, menuSearch.value);
-  });
-}
-
- 
-
-// Smooth scroll for navigation links
 function smoothScroll(e) {
-  e.preventDefault();
-  const targetId      = this.getAttribute('href');
-  const targetSection = document.querySelector(targetId);
+  const href = e.currentTarget.getAttribute("href");
+  if (!href || !href.startsWith("#")) return;
 
-  if (targetSection) {
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const offsetTop = targetSection.offsetTop - 80;
-    window.scrollTo({
-      top: offsetTop,
-      behavior: prefersReduced ? "auto" : "smooth",
-    // FIX #15 partial — respect reduced motion in smooth scroll too
-   
-  })
+  const target = document.querySelector(href);
+  if (!target) return;
+
+  e.preventDefault();
+  window.scrollTo({
+    top: target.offsetTop - 96,
+    behavior: prefersReducedMotion() ? "auto" : "smooth",
+  });
+
   closeMobileMenu();
 }
-}
-// ── Reservation form submission ──
-function handleFormSubmit(e) {
-  e.preventDefault();
-
-  const inputs  = reservationForm.querySelectorAll('input, select, textarea');
-  let isValid   = true;
-
-  inputs.forEach((input) => {
-    if (input.required && !input.value) {
-      input.style.borderColor = '#c94a4a';
-      isValid = false;
-    } else {
-      input.style.borderColor = '';
-    }
-  });
-  const emailInput = document.getElementById('email');
-const phoneInput = document.getElementById('phone');
-
-// Remove old error messages if already present
-document.querySelectorAll('.error-message').forEach(el => el.remove());
-
-// Email validation
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-if (emailInput && !emailRegex.test(emailInput.value.trim())) {
-  emailInput.style.borderColor = '#c94a4a';
-
-  const emailError = document.createElement('small');
-  emailError.className = 'error-message';
-  emailError.style.color = '#c94a4a';
-  emailError.textContent = 'Please enter a valid email address.';
-
-  emailInput.parentElement.appendChild(emailError);
-
-  isValid = false;
-}
-
-// Phone validation
-if (phoneInput) {
-  const phoneValue = phoneInput.value.replace(/\D/g, '');
-
-  if (phoneValue.length !== 10) {
-    phoneInput.style.borderColor = '#c94a4a';
-
-    const phoneError = document.createElement('small');
-    phoneError.className = 'error-message';
-    phoneError.style.color = '#c94a4a';
-    phoneError.textContent = 'Phone number must contain exactly 10 digits.';
-
-    phoneInput.parentElement.appendChild(phoneError);
-
-    isValid = false;
-  }
-}
-  
-  if (isValid) {
-    const submitBtn  = reservationForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Reservation Requested!';
-    submitBtn.style.backgroundColor = '#4a9c6a';
-    submitBtn.disabled = true;
-
-    setTimeout(() => {
-      reservationForm.reset();
-      updateAvailableTimes();
-      submitBtn.textContent = originalText;
-      submitBtn.style.backgroundColor = '';
-      submitBtn.disabled = false;
-      // Re-run time filter after form reset in case date was today
-      updateAvailableTimes();
-    }, 3000);
-  }
-}
-
-// ── FIX #15 — Intersection Observer with prefers-reduced-motion ──────
-function setupIntersectionObserver() {
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  const animatedElements = document.querySelectorAll(
-    '.about-content, .menu-panel, .reservation-form, .location-info'
-  );
-
-  if (prefersReduced) {
-    // Skip animation entirely — just show everything immediately
-    animatedElements.forEach((el) => {
-      el.style.opacity = '1';
-      el.style.transform = 'none';
-    });
-    return;
-  }
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { root: null, rootMargin: '0px 0px -50px 0px', threshold: 0 }
-  );
-
-  animatedElements.forEach((el) => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(30px)';
-    el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-    observer.observe(el);
-  });
-}
-
-// Inject .visible class styles
-const style = document.createElement('style');
-style.textContent = `.visible { opacity: 1 !important; transform: translateY(0) !important; }`;
-document.head.appendChild(style);
-
-
-// ── Auto-scroll on hero "Scroll To Discover" click ───
-const heroScroll = document.querySelector('.hero-scroll');
-let autoScrollInterval = null;
-
-function startAutoScroll() {
-  autoScrollInterval = setInterval(() => {
-    window.scrollBy({ top: 2, behavior: 'instant' });
-    if (window.scrollY + window.innerHeight >= document.body.scrollHeight) {
-      stopAutoScroll();
-    }
-  }, 15);
-}
-
-function stopAutoScroll() {
-  if (autoScrollInterval) {
-    clearInterval(autoScrollInterval);
-    autoScrollInterval = null;
-  }
-}
-
-if (heroScroll) {
-  heroScroll.style.cursor = 'pointer';
-  heroScroll.addEventListener('click', () => {
-    autoScrollInterval ? stopAutoScroll() : startAutoScroll();
-  });
-}
-
-['mousemove', 'touchstart', 'keydown', 'wheel', 'pointerdown'].forEach((event) => {
-  window.addEventListener(event, stopAutoScroll);
-});
-
-// ── Back To Top ──
-const backToTopBtn = document.getElementById('backToTop');
-
-if (backToTopBtn) {
-  // Two scroll listeners in original were duplicated — merged into one
-  window.addEventListener('scroll', () => {
-    const past = window.scrollY > 300;
-    backToTopBtn.style.display = past ? 'block' : 'none';
-    backToTopBtn.classList.toggle('visible', past);
-  });
-
-  backToTopBtn.addEventListener('click', () => {
-    // FIX #15 partial — respect reduced motion on back-to-top too
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' });
-  });
-}
-
-// ── Event Listeners ──
-window.addEventListener('scroll', handleScroll);
-navToggle.addEventListener('click', toggleMobileMenu);
-
-navLinks.forEach((link) => link.addEventListener('click', smoothScroll));
-
-// Menu tab listeners removed — menu uses filter buttons
-document.querySelectorAll('.nav-cta, .nav-cta-mobile, .hero-buttons a').forEach((link) => {
-  link.addEventListener('click', smoothScroll);
-});
-
-if (reservationForm) {
-  reservationForm.addEventListener('submit', handleFormSubmit);
-}
-
-window.addEventListener('resize', () => {
-  if (window.innerWidth > 768) closeMobileMenu();
-});
-
-// ── Reviews (localStorage) ──
-const STORAGE_KEY = 'lighthouse_reviews';
-
-const pinnedReview = {
-  name: 'Rasshi Srivastav',
-  rating: 5,
-  text: 'Absolutely loved the food and ambience! Every dish was crafted with such care and the atmosphere was warm and elegant. A truly memorable dining experience — will definitely be coming back!',
-  date: '14 May 2026',
-};
 
 function getReviews() {
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-  return [];
+  if (!stored) return [];
+
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
 }
 
 function saveReviews(reviews) {
@@ -493,427 +166,378 @@ function saveReviews(reviews) {
 }
 
 function renderReviews() {
-  const grid = document.getElementById('reviews-grid');
+  const grid = document.getElementById("reviews-grid");
   if (!grid) return;
 
-  const userReviews = getReviews();
-  const allReviews  = [pinnedReview, ...userReviews];
+  const allReviews = [pinnedReview, ...getReviews()];
 
-  grid.innerHTML = "";
+  if (!allReviews.length) {
+    grid.innerHTML = '<p class="review-empty">Be the first to share your experience.</p>';
+    return;
+  }
 
-  allReviews.forEach((r) => {
-    const card = document.createElement("div");
-    card.className = "review-card";
-
-    const stars = document.createElement("div");
-    stars.className = "review-stars";
-    stars.textContent =
-      "★".repeat(r.rating) + "☆".repeat(5 - r.rating);
-
-    const text = document.createElement("p");
-    text.className = "review-text";
-    text.textContent = r.text;
-
-    const author = document.createElement("div");
-    author.className = "review-author";
-
-    const avatar = document.createElement("div");
-    avatar.className = "review-avatar";
-    avatar.textContent = r.name.slice(0, 2).toUpperCase();
-
-    const info = document.createElement("div");
-
-    const name = document.createElement("span");
-    name.className = "review-name";
-    name.textContent = r.name;
-
-    const date = document.createElement("span");
-    date.className = "review-date";
-    date.textContent = r.date;
-
-    info.appendChild(name);
-    info.appendChild(date);
-
-    author.appendChild(avatar);
-    author.appendChild(info);
-
-    card.appendChild(stars);
-    card.appendChild(text);
-    card.appendChild(author);
-
-    grid.appendChild(card);
-  });
   grid.innerHTML = allReviews
     .map(
-      (r) => `
-      <div class="review-card">
-        <div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
-        <p class="review-text">${r.text}</p>
-        <div class="review-author">
-          <div class="review-avatar">${r.name.slice(0, 2).toUpperCase()}</div>
-          <div>
-            <span class="review-name">${r.name}</span>
-            <span class="review-date">${r.date}</span>
+      (review) => `
+        <article class="review-card">
+          <div class="review-stars">${"★".repeat(review.rating)}${"☆".repeat(5 - review.rating)}</div>
+          <p class="review-text">${review.text}</p>
+          <div class="review-author">
+            <div class="review-avatar">${review.name.slice(0, 2).toUpperCase()}</div>
+            <div>
+              <span class="review-name">${review.name}</span>
+              <span class="review-date">${review.date}</span>
+            </div>
           </div>
-        </div>
-      </div>`
+        </article>`
     )
-    .join('');
-}
-
-// Star rating widget
-let selectedRating = 0;
-const starBtns = document.querySelectorAll('#star-input .star-btn');
-
-starBtns.forEach((btn) => {
-  btn.addEventListener('mouseenter', () => {
-    const val = +btn.dataset.value;
-    starBtns.forEach((s) => s.classList.toggle('active', +s.dataset.value <= val));
-  });
-  btn.addEventListener('mouseleave', () => {
-    starBtns.forEach((s) => s.classList.toggle('active', +s.dataset.value <= selectedRating));
-  });
-  btn.addEventListener('click', () => {
-    selectedRating = +btn.dataset.value;
-    document.getElementById('review-rating').value = selectedRating;
-    starBtns.forEach((s) => s.classList.toggle('active', +s.dataset.value <= selectedRating));
-  });
-});
-
-// Review validation helpers
-function isMeaningfulReview(text) {
-  const words = text.trim().split(/\s+/);
-  const randomPattern = /^(.)\1+$|^[a-zA-Z]{1,6}$/;
-  if (randomPattern.test(text.trim())) return false;
-  return words.length >= 3;
+    .join("");
 }
 
 function isValidName(name) {
   return /^[A-Za-z\s'\-]{3,30}$/.test(name.trim());
 }
 
-const reviewForm = document.getElementById('review-form');
-const reviewMsg  = document.getElementById('review-msg');
+function isMeaningfulReview(text) {
+  const trimmed = text.trim();
+  const words = trimmed.split(/\s+/);
+  return words.length >= 3 && !/^(.)\1+$/.test(trimmed);
+}
 
-if (reviewForm) {
-  reviewForm.addEventListener('submit', function (e) {
+function updateStarState(value) {
+  starBtns.forEach((btn) => {
+    btn.classList.toggle("active", Number(btn.dataset.value) <= value);
+  });
+}
+
+function updateMenuSummary(visibleCount, totalCount) {
+  if (!menuResultCount) return;
+
+  if (visibleCount === totalCount) {
+    menuResultCount.textContent = `Showing all ${totalCount} dishes`;
+  } else if (visibleCount === 0) {
+    menuResultCount.textContent = "No dishes match your filters.";
+  } else {
+    menuResultCount.textContent = `Showing ${visibleCount} of ${totalCount} dishes`;
+  }
+}
+
+function filterMenuItems() {
+  const searchText = menuSearch?.value.trim().toLowerCase() || "";
+  const cuisineFilter = cuisineDropdown?.value || "all";
+  const categoryFilter = document.querySelector(".filter-btn.active")?.dataset.filter || "all";
+  const currentDiet = activeDiet;
+
+  let visibleCount = 0;
+
+  menuItems.forEach((item) => {
+    const title = item.querySelector("h3")?.textContent.toLowerCase() || "";
+    const category = item.dataset.category || "all";
+    const cuisine = item.dataset.cuisine || "all";
+    const diet = item.dataset.diet || "all";
+
+    const matchesSearch = title.includes(searchText);
+    const matchesCategory = categoryFilter === "all" || category === categoryFilter;
+    const matchesCuisine = cuisineFilter === "all" || cuisine === cuisineFilter;
+    const matchesDiet = currentDiet === "all" || diet === currentDiet;
+
+    const visible = matchesSearch && matchesCategory && matchesCuisine && matchesDiet;
+    item.classList.toggle("hidden-item", !visible);
+    item.classList.toggle("diet-hidden", !visible);
+
+    if (visible) visibleCount += 1;
+  });
+
+  let emptyState = document.querySelector(".menu-result-empty");
+  if (visibleCount === 0) {
+    if (!emptyState) {
+      emptyState = document.createElement("p");
+      emptyState.className = "menu-result-empty";
+      emptyState.textContent = "No dishes match the selected filters.";
+      document.getElementById("menuItems")?.appendChild(emptyState);
+    }
+  } else if (emptyState) {
+    emptyState.remove();
+  }
+
+  updateMenuSummary(visibleCount, menuItems.length);
+}
+
+function setupIntersectionObserver() {
+  const targets = document.querySelectorAll(
+    ".reveal, .about-content, .menu-controls, .menu-summary, .reservation-form, .location-info, .review-form-wrapper, .special-card, .review-card, .menu-item"
+  );
+
+  if (prefersReducedMotion()) {
+    targets.forEach((el) => el.classList.add("visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.08, rootMargin: "0px 0px -80px 0px" }
+  );
+
+  targets.forEach((el) => observer.observe(el));
+}
+
+function setupReservationForm() {
+  if (!reservationForm) return;
+
+  reservationForm.addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const name       = document.getElementById('review-name').value.trim();
-    const reviewText = document.getElementById('review-text').value.trim();
+    const requiredFields = reservationForm.querySelectorAll("input[required], select[required]");
+    let isValid = true;
 
-    reviewMsg.style.display = 'block';
+    reservationForm.querySelectorAll(".error-message").forEach((node) => node.remove());
 
-    if (!selectedRating) {
-      reviewMsg.textContent = 'Please select a star rating.';
-      reviewMsg.style.color = '#c94a4a';
-      return;
-    }
-    if (!isValidName(name)) {
-      reviewMsg.textContent = 'Name should contain only letters and be 3–30 characters long.';
-      reviewMsg.style.color = '#c94a4a';
-      return;
-    }
-    if (reviewText.length < 20) {
-      reviewMsg.textContent = 'Review must contain at least 20 characters.';
-      reviewMsg.style.color = '#c94a4a';
-      return;
-    }
-    if (!isMeaningfulReview(reviewText)) {
-      reviewMsg.textContent = 'Please enter a meaningful review.';
-      reviewMsg.style.color = '#c94a4a';
-      return;
-    }
-
-    const dateStr = new Date().toLocaleDateString('en-IN', {
-      day: '2-digit', month: 'short', year: 'numeric',
+    requiredFields.forEach((field) => {
+      field.style.borderColor = "";
+      if (!field.value) {
+        field.style.borderColor = "#ef6a6a";
+        isValid = false;
+      }
     });
 
-    const newReview = { id: Date.now(), name, rating: selectedRating, text: reviewText, date: dateStr };
-    const reviews   = getReviews();
+    const emailInput = document.getElementById("email");
+    const phoneInput = document.getElementById("phone");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (emailInput && !emailRegex.test(emailInput.value.trim())) {
+      emailInput.style.borderColor = "#ef6a6a";
+      isValid = false;
+      const emailError = document.createElement("small");
+      emailError.className = "error-message";
+      emailError.style.color = "#ef6a6a";
+      emailError.textContent = "Please enter a valid email address.";
+      emailInput.parentElement?.appendChild(emailError);
+    }
+
+    if (phoneInput) {
+      const digits = phoneInput.value.replace(/\D/g, "");
+      if (digits.length !== 10) {
+        phoneInput.style.borderColor = "#ef6a6a";
+        isValid = false;
+        const phoneError = document.createElement("small");
+        phoneError.className = "error-message";
+        phoneError.style.color = "#ef6a6a";
+        phoneError.textContent = "Phone number must contain exactly 10 digits.";
+        phoneInput.parentElement?.appendChild(phoneError);
+      }
+    }
+
+    if (!isValid) return;
+
+    const submitBtn = reservationForm.querySelector('button[type="submit"]');
+    if (!submitBtn) return;
+
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Reservation Requested!";
+
+    setTimeout(() => {
+      reservationForm.reset();
+      updateAvailableTimes();
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }, 2400);
+  });
+}
+
+function setupReviews() {
+  if (!reviewForm) return;
+
+  starBtns.forEach((btn) => {
+    btn.addEventListener("mouseenter", () => updateStarState(Number(btn.dataset.value)));
+    btn.addEventListener("mouseleave", () => updateStarState(selectedRating));
+    btn.addEventListener("click", () => {
+      selectedRating = Number(btn.dataset.value);
+      if (reviewRatingInput) reviewRatingInput.value = String(selectedRating);
+      updateStarState(selectedRating);
+    });
+  });
+
+  reviewForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById("review-name")?.value.trim() || "";
+    const reviewText = document.getElementById("review-text")?.value.trim() || "";
+
+    if (!reviewMsg) return;
+    reviewMsg.style.display = "block";
+
+    if (!selectedRating) {
+      reviewMsg.textContent = "Please select a star rating.";
+      reviewMsg.style.color = "#ef6a6a";
+      return;
+    }
+
+    if (!isValidName(name)) {
+      reviewMsg.textContent = "Name should contain only letters and be 3–30 characters long.";
+      reviewMsg.style.color = "#ef6a6a";
+      return;
+    }
+
+    if (reviewText.length < 20) {
+      reviewMsg.textContent = "Review must contain at least 20 characters.";
+      reviewMsg.style.color = "#ef6a6a";
+      return;
+    }
+
+    if (!isMeaningfulReview(reviewText)) {
+      reviewMsg.textContent = "Please enter a meaningful review.";
+      reviewMsg.style.color = "#ef6a6a";
+      return;
+    }
+
+    const dateStr = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    const newReview = {
+      id: Date.now(),
+      name,
+      rating: selectedRating,
+      text: reviewText,
+      date: dateStr,
+    };
+
+    const reviews = getReviews();
     reviews.unshift(newReview);
     saveReviews(reviews);
     renderReviews();
 
     reviewForm.reset();
     selectedRating = 0;
-    document.getElementById('review-rating').value = 0;
-    starBtns.forEach((s) => s.classList.remove('active'));
+    if (reviewRatingInput) reviewRatingInput.value = "0";
+    updateStarState(0);
 
-    reviewMsg.textContent = 'Review submitted successfully!';
-    reviewMsg.style.color = '#4a9c6a';
-    setTimeout(() => { reviewMsg.style.display = 'none'; }, 3000);
+    reviewMsg.textContent = "Review submitted successfully!";
+    reviewMsg.style.color = "#4dd28f";
+
+    setTimeout(() => {
+      reviewMsg.style.display = "none";
+    }, 2500);
   });
 }
 
-// ── Initialise ───
-document.addEventListener('DOMContentLoaded', () => {
+function setupMenuFilters() {
+  filterBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      filterBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      filterMenuItems();
+    });
+  });
+
+  dietBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      dietBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeDiet = btn.dataset.diet || "all";
+      filterMenuItems();
+    });
+  });
+
+  menuSearch?.addEventListener("input", filterMenuItems);
+  cuisineDropdown?.addEventListener("change", filterMenuItems);
+}
+
+function setupHeroScroll() {
+  if (!heroScroll) return;
+
+  heroScroll.addEventListener("click", () => {
+    const nextSection = document.getElementById("about");
+    if (!nextSection) return;
+
+    window.scrollTo({
+      top: nextSection.offsetTop - 84,
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
+  });
+}
+
+function setupNewsletter() {
+  const form = document.querySelector(".newsletter-form");
+  if (!form) return;
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = form.querySelector("input[type='email']");
+    if (!input || !input.value.trim()) return;
+    input.value = "";
+    alert("Thanks for subscribing to The Lighthouse newsletter!");
+  });
+}
+
+function init() {
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  setTheme(savedTheme);
+
+  if (dateInput) {
+    const tomorrow = new Date(Date.now() + 86400000);
+    const maxDate = new Date(Date.now() + 90 * 86400000);
+    dateInput.min = tomorrow.toISOString().split("T")[0];
+    dateInput.max = maxDate.toISOString().split("T")[0];
+    dateInput.addEventListener("change", updateAvailableTimes);
+  }
+
   handleScroll();
-  setupIntersectionObserver();
-  updateAvailableTimes();
   renderReviews();
-});
+  filterMenuItems();
+  updateAvailableTimes();
+  setupIntersectionObserver();
+  setupReservationForm();
+  setupReviews();
+  setupMenuFilters();
+  setupHeroScroll();
+  setupNewsletter();
 
-// ── Veg / Non-Veg Filter ──────────────────────────────
-// 1. Your filtering function, contained properly
-(function () {
-  const filterBtns = document.querySelectorAll('.diet-btn');
-  if (!filterBtns.length) return;
+  navToggle?.addEventListener("click", toggleMobileMenu);
+  navLinks.forEach((link) => link.addEventListener("click", smoothScroll));
 
-  function applyDietFilter(diet) {
-    const activePanels = document.querySelectorAll('.menu-panel.active');
-    
-    activePanels.forEach(panel => {
-      const items = panel.querySelectorAll('.menu-item');
-      let visibleCount = 0;
-
-      items.forEach(item => {
-        const itemDiet = item.dataset.diet || 'all';
-        const show = diet === 'all' || itemDiet === diet;
-        item.classList.toggle('diet-hidden', !show);
-        if (show) visibleCount++;
-      });
-
-      let noResults = panel.querySelector('.diet-no-results');
-      if (!noResults) {
-        noResults = document.createElement('p');
-        noResults.className = 'diet-no-results';
-        noResults.textContent = 'No items match the selected filter.';
-        panel.querySelector('.menu-items').appendChild(noResults);
-      }
-      noResults.classList.toggle('visible', visibleCount === 0);
-    });
-  }
-
-  filterBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      filterBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      applyDietFilter(btn.dataset.diet);
-    });
-  });
-
-  document.querySelectorAll('.menu-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const activeDiet = document.querySelector('.diet-btn.active')?.dataset.diet || 'all';
-      setTimeout(() => applyDietFilter(activeDiet), 50);
-    });
-  });
-})();
-
-// ── Skeleton Loader Initialization ─────────────────────────────────────
-function createCardSkeleton() {
-  const sk = document.createElement('div');
-  sk.className = 'skeleton-card skeleton';
-
-  const left = document.createElement('div');
-  left.className = 'skeleton-img';
-
-  const right = document.createElement('div');
-  right.className = 'skeleton-lines';
-
-  const line1 = document.createElement('div');
-  line1.className = 'skeleton-line long';
-  const line2 = document.createElement('div');
-  line2.className = 'skeleton-line medium';
-  const line3 = document.createElement('div');
-  line3.className = 'skeleton-line short';
-
-  right.appendChild(line1);
-  right.appendChild(line2);
-  right.appendChild(line3);
-
-  sk.appendChild(left);
-  sk.appendChild(right);
-
-  return sk;
-}
-
-function attachSkeletonToCard(card) {
-  if (card.__skeletonAttached) return;
-  const wrapper = document.createElement('div');
-  wrapper.className = 'skeleton-wrapper';
-
-  // Move existing children into wrapper
-  while (card.firstChild) {
-    wrapper.appendChild(card.firstChild);
-  }
-
-  card.appendChild(wrapper);
-
-  const skeleton = createCardSkeleton();
-  wrapper.appendChild(skeleton);
-
-  // Hide native images inside the card while loading
-  const imgs = wrapper.querySelectorAll('img');
-  imgs.forEach((img) => {
-    img.classList.add('image-hidden');
-    // lazy-load optimization: set loading attribute where supported
-    try { if (!img.hasAttribute('loading')) img.setAttribute('loading', 'lazy'); } catch (e) {}
-
-    if (img.complete && img.naturalWidth > 0) {
-      // Already loaded from cache - reveal immediately
-      img.classList.add('image-loaded');
-      img.classList.remove('image-hidden');
-      skeleton.remove();
-    } else {
-      // Wait for load or error
-      img.addEventListener('load', function onLoad() {
-        img.classList.add('image-loaded');
-        img.classList.remove('image-hidden');
-        // fade out skeleton then remove
-        skeleton.style.transition = 'opacity 0.45s ease';
-        skeleton.style.opacity = '0';
-        setTimeout(() => skeleton.remove(), 500);
-        img.removeEventListener('load', onLoad);
-      });
-
-      img.addEventListener('error', function onError() {
-        // remove skeleton even if image fails to avoid permanent overlays
-        skeleton.style.transition = 'opacity 0.25s ease';
-        skeleton.style.opacity = '0';
-        setTimeout(() => skeleton.remove(), 300);
-        img.classList.remove('image-hidden');
-        img.removeEventListener('error', onError);
-      });
+  document.querySelectorAll("a[href^='#']").forEach((link) => {
+    if (!link.classList.contains("nav-link")) {
+      link.addEventListener("click", smoothScroll);
     }
   });
 
-  card.__skeletonAttached = true;
-}
-
-function attachSkeletonToSimpleImage(container, minHeight = 180) {
-  // container is element that contains a single img as background or child
-  const img = container.querySelector('img');
-  if (!img) return;
-  if (container.__skeletonAttached) return;
-
-  const sk = document.createElement('div');
-  sk.className = 'skeleton-img skeleton';
-  sk.style.height = minHeight + 'px';
-  sk.style.width = '100%';
-  sk.style.borderRadius = getComputedStyle(container).borderRadius || '4px';
-  sk.style.position = 'absolute';
-  sk.style.inset = '0';
-  sk.style.zIndex = '2';
-
-  // ensure container is positioned to allow absolute overlay
-  const prevPos = getComputedStyle(container).position;
-  if (prevPos === 'static') container.style.position = 'relative';
-
-  container.appendChild(sk);
-
-  img.classList.add('image-hidden');
-
-  if (img.complete && img.naturalWidth > 0) {
-    img.classList.add('image-loaded');
-    img.classList.remove('image-hidden');
-    sk.remove();
-  } else {
-    try { if (!img.hasAttribute('loading')) img.setAttribute('loading', 'lazy'); } catch (e) {}
-
-    img.addEventListener('load', function onLoad() {
-      img.classList.add('image-loaded');
-      img.classList.remove('image-hidden');
-      sk.style.transition = 'opacity 0.45s ease';
-      sk.style.opacity = '0';
-      setTimeout(() => sk.remove(), 500);
-      img.removeEventListener('load', onLoad);
-    });
-    img.addEventListener('error', function onError() {
-      sk.style.opacity = '0';
-      setTimeout(() => sk.remove(), 300);
-      img.classList.remove('image-hidden');
-      img.removeEventListener('error', onError);
-    });
-  }
-
-  container.__skeletonAttached = true;
-}
-
-// Text skeletons
-function createTextSkeleton(lines = 3) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'skeleton skeleton-overlay skeleton-fade';
-  wrapper.setAttribute('aria-hidden', 'true');
-
-  const block = document.createElement('div');
-  block.className = 'skeleton-lines';
-
-  for (let i = 0; i < lines; i++) {
-    const line = document.createElement('div');
-    line.className = 'skeleton-line';
-    // vary width for realism
-    if (i === 0) line.classList.add('long');
-    else if (i === lines - 1) line.classList.add('short');
-    else line.classList.add('medium');
-    block.appendChild(line);
-  }
-
-  wrapper.appendChild(block);
-  return wrapper;
-}
-
-function attachSkeletonToTextBlock(el, lines = 3) {
-  if (!el || el.__skeletonAttached) return;
-
-  // ensure wrapper for absolute overlay
-  el.classList.add('skeleton-wrapper');
-  const sk = createTextSkeleton(lines);
-
-  // hide content until revealed
-  el.classList.add('content-hidden');
-
-  // insert skeleton overlay
-  sk.style.position = 'absolute';
-  sk.style.top = 0;
-  sk.style.left = 0;
-  sk.style.right = 0;
-  sk.style.bottom = 0;
-  sk.style.zIndex = 2;
-  el.appendChild(sk);
-
-  // Reveal content after microtask or when images inside have loaded
-  // For static text, unhide quickly to avoid long overlays
-  requestAnimationFrame(() => {
-    // small delay to allow shimmer to show slightly
-    setTimeout(() => {
-      el.classList.remove('content-hidden');
-      el.classList.add('content-visible');
-      // fade out skeleton
-      sk.style.opacity = '0';
-      setTimeout(() => sk.remove(), 500);
-    }, 300);
+  themeToggle?.addEventListener("click", () => {
+    const isLight = document.body.classList.contains("light-theme");
+    setTheme(isLight ? "dark" : "light");
   });
 
-  el.__skeletonAttached = true;
-}
-
-// Updated init to attach text skeletons
-function initSkeletonLoaders() {
-  // Menu card skeletons
-  const cards = document.querySelectorAll('.food-card');
-  cards.forEach((card) => attachSkeletonToCard(card));
-
-  // Large section images: hero, about image, reservation bg
-  const largeContainers = [
-    document.querySelector('.hero-bg'),
-    document.querySelector('.about-image'),
-    document.querySelector('.reservation-bg'),
-  ];
-
-  largeContainers.forEach((c) => {
-    if (c) attachSkeletonToSimpleImage(c, 360);
+  backToTopBtn?.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
   });
 
-  // Text blocks (about, reservation info, first paragraph areas)
-  const textTargets = document.querySelectorAll('.about-content, .reservation-info, .review-form-heading');
-  textTargets.forEach((t) => attachSkeletonToTextBlock(t, 3));
+  window.addEventListener("scroll", handleScroll, { passive: true });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 860) closeMobileMenu();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!navMenu || !navToggle) return;
+    const target = e.target;
+    if (!(target instanceof Node)) return;
+    if (!navMenu.contains(target) && !navToggle.contains(target)) {
+      closeMobileMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMobileMenu();
+  });
 }
 
-// Initialize skeletons once DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  // existing DOMContentLoaded handlers already call init functions earlier,
-  // but ensure skeletons are attached after render
-  initSkeletonLoaders();
-})}
+document.addEventListener("DOMContentLoaded", init);
